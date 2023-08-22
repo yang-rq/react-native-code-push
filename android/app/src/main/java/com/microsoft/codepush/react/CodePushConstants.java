@@ -31,4 +31,8 @@ public class CodePushConstants {
     public static final String LATEST_ROLLBACK_PACKAGE_HASH_KEY = "packageHash";
     public static final String LATEST_ROLLBACK_TIME_KEY = "time";
     public static final String LATEST_ROLLBACK_COUNT_KEY = "count";
+    public static final String CODE_PUSH_COMMON_BUNDLE_FOLDER_PREFIX = "CommonBundle";
+    public static final String DEFAULT_COMMON_JS_BUNDLE_NAME = "common.android.bundle.js";
+
+
 }

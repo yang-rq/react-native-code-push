@@ -7,7 +7,7 @@ import log from "./logging";
 module.exports = (NativeCodePush) => {
   const remote = (reportStatusDownload) => {
     return {
-      async download(downloadProgressCallback) {
+      async download(pathPrefix, bundleFileName, downloadProgressCallback) {
         if (!this.downloadUrl) {
           throw new Error("Cannot download an update without a download url");
         }
@@ -28,13 +28,13 @@ module.exports = (NativeCodePush) => {
           const updatePackageCopy = Object.assign({}, this);
           Object.keys(updatePackageCopy).forEach((key) => (typeof updatePackageCopy[key] === 'function') && delete updatePackageCopy[key]);
 
-          const downloadedPackage = await NativeCodePush.downloadUpdate(updatePackageCopy, !!downloadProgressCallback);
+          const downloadedPackage = await NativeCodePush.downloadUpdate(updatePackageCopy, !!downloadProgressCallback, pathPrefix, bundleFileName);
 
           if (reportStatusDownload) {
             reportStatusDownload(this)
-            .catch((err) => {
-              log(`Report download status failed: ${err}`);
-            });
+              .catch((err) => {
+                log(`Report download status failed: ${err}`);
+              });
           }
 
           return { ...downloadedPackage, ...local };
@@ -48,13 +48,13 @@ module.exports = (NativeCodePush) => {
   };
 
   const local = {
-    async install(installMode = NativeCodePush.codePushInstallModeOnNextRestart, minimumBackgroundDuration = 0, updateInstalledCallback) {
+    async install(installMode = NativeCodePush.codePushInstallModeOnNextRestart, pathPrefix, bundleFileName, minimumBackgroundDuration = 0, updateInstalledCallback) {
       const localPackage = this;
       const localPackageCopy = Object.assign({}, localPackage); // In dev mode, React Native deep freezes any object queued over the bridge
-      await NativeCodePush.installUpdate(localPackageCopy, installMode, minimumBackgroundDuration);
+      await NativeCodePush.installUpdate(localPackageCopy, installMode, minimumBackgroundDuration, pathPrefix, bundleFileName);
       updateInstalledCallback && updateInstalledCallback();
       if (installMode == NativeCodePush.codePushInstallModeImmediate) {
-        NativeCodePush.restartApp(false);
+        NativeCodePush.restartApp(false, pathPrefix, bundleFileName);
       } else {
         NativeCodePush.clearPendingRestart();
         localPackage.isPending = true; // Mark the package as pending since it hasn't been applied yet

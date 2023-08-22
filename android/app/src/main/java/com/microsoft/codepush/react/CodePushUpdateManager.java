@@ -24,33 +24,35 @@ public class CodePushUpdateManager {
         mDocumentsDirectory = documentsDirectory;
     }
 
-    private String getDownloadFilePath() {
-        return CodePushUtils.appendPathComponent(getCodePushPath(), CodePushConstants.DOWNLOAD_FILE_NAME);
+    private String getDownloadFilePath(String pathPrefix) {
+        return CodePushUtils.appendPathComponent(getCodePushPath(pathPrefix), CodePushConstants.DOWNLOAD_FILE_NAME);
     }
 
-    private String getUnzippedFolderPath() {
-        return CodePushUtils.appendPathComponent(getCodePushPath(), CodePushConstants.UNZIPPED_FOLDER_NAME);
+    private String getUnzippedFolderPath(String pathPrefix) {
+        return CodePushUtils.appendPathComponent(getCodePushPath(pathPrefix), CodePushConstants.UNZIPPED_FOLDER_NAME);
     }
 
     private String getDocumentsDirectory() {
         return mDocumentsDirectory;
     }
 
-    private String getCodePushPath() {
+    private String getCodePushPath(String pathPrefix) {
         String codePushPath = CodePushUtils.appendPathComponent(getDocumentsDirectory(), CodePushConstants.CODE_PUSH_FOLDER_PREFIX);
+        String prefixCodePushPath = CodePushUtils.appendPathComponent(codePushPath, pathPrefix);
         if (CodePush.isUsingTestConfiguration()) {
-            codePushPath = CodePushUtils.appendPathComponent(codePushPath, "TestPackages");
+            prefixCodePushPath = CodePushUtils.appendPathComponent(prefixCodePushPath, "TestPackages");
         }
 
+        return prefixCodePushPath;
         return codePushPath;
     }
 
-    private String getStatusFilePath() {
-        return CodePushUtils.appendPathComponent(getCodePushPath(), CodePushConstants.STATUS_FILE);
+    private String getStatusFilePath(String pathPrefix) {
+        return CodePushUtils.appendPathComponent(getCodePushPath(pathPrefix), CodePushConstants.STATUS_FILE);
     }
 
-    public JSONObject getCurrentPackageInfo() {
-        String statusFilePath = getStatusFilePath();
+    public JSONObject getCurrentPackageInfo(String pathPrefix) {
+        String statusFilePath = getStatusFilePath(pathPrefix);
         if (!FileUtils.fileAtPathExists(statusFilePath)) {
             return new JSONObject();
         }
@@ -63,17 +65,17 @@ public class CodePushUpdateManager {
         }
     }
 
-    public void updateCurrentPackageInfo(JSONObject packageInfo) {
+    public void updateCurrentPackageInfo(JSONObject packageInfo, String pathPrefix) {
         try {
-            CodePushUtils.writeJsonToFile(packageInfo, getStatusFilePath());
+            CodePushUtils.writeJsonToFile(packageInfo, getStatusFilePath(pathPrefix));
         } catch (IOException e) {
             // Should not happen.
             throw new CodePushUnknownException("Error updating current package info", e);
         }
     }
 
-    public String getCurrentPackageFolderPath() {
-        JSONObject info = getCurrentPackageInfo();
+    public String getCurrentPackageFolderPath(String pathPrefix) {
+        JSONObject info = getCurrentPackageInfo(pathPrefix);
         String packageHash = info.optString(CodePushConstants.CURRENT_PACKAGE_KEY, null);
         if (packageHash == null) {
             return null;
@@ -82,13 +84,13 @@ public class CodePushUpdateManager {
         return getPackageFolderPath(packageHash);
     }
 
-    public String getCurrentPackageBundlePath(String bundleFileName) {
-        String packageFolder = getCurrentPackageFolderPath();
+    public String getCurrentPackageBundlePath(String bundleFileName, String pathPrefix) {
+        String packageFolder = getCurrentPackageFolderPath(pathPrefix);
         if (packageFolder == null) {
             return null;
         }
 
-        JSONObject currentPackage = getCurrentPackage();
+        JSONObject currentPackage = getCurrentPackage(pathPrefix);
         if (currentPackage == null) {
             return null;
         }
@@ -101,40 +103,40 @@ public class CodePushUpdateManager {
         }
     }
 
-    public String getPackageFolderPath(String packageHash) {
-        return CodePushUtils.appendPathComponent(getCodePushPath(), packageHash);
+    public String getPackageFolderPath(String packageHash, String pathPrefix) {
+        return CodePushUtils.appendPathComponent(getCodePushPath(pathPrefix), packageHash);
     }
 
-    public String getCurrentPackageHash() {
-        JSONObject info = getCurrentPackageInfo();
+    public String getCurrentPackageHash(String pathPrefix) {
+        JSONObject info = getCurrentPackageInfo(pathPrefix);
         return info.optString(CodePushConstants.CURRENT_PACKAGE_KEY, null);
     }
 
-    public String getPreviousPackageHash() {
-        JSONObject info = getCurrentPackageInfo();
+    public String getPreviousPackageHash(String pathPrefix) {
+        JSONObject info = getCurrentPackageInfo(pathPrefix);
         return info.optString(CodePushConstants.PREVIOUS_PACKAGE_KEY, null);
     }
 
-    public JSONObject getCurrentPackage() {
-        String packageHash = getCurrentPackageHash();
+    public JSONObject getCurrentPackage(String pathPrefix) {
+        String packageHash = getCurrentPackageHash(pathPrefix);
         if (packageHash == null) {
             return null;
         }
 
-        return getPackage(packageHash);
+        return getPackage(packageHash, pathPrefix);
     }
 
-    public JSONObject getPreviousPackage() {
-        String packageHash = getPreviousPackageHash();
+    public JSONObject getPreviousPackage(String pathPrefix) {
+        String packageHash = getPreviousPackageHash(pathPrefix);
         if (packageHash == null) {
             return null;
         }
 
-        return getPackage(packageHash);
+        return getPackage(packageHash, pathPrefix);
     }
 
-    public JSONObject getPackage(String packageHash) {
-        String folderPath = getPackageFolderPath(packageHash);
+    public JSONObject getPackage(String packageHash, String pathPrefix) {
+        String folderPath = getPackageFolderPath(packageHash, pathPrefix);
         String packageFilePath = CodePushUtils.appendPathComponent(folderPath, CodePushConstants.PACKAGE_FILE_NAME);
         try {
             return CodePushUtils.getJsonObjectFromFile(packageFilePath);
@@ -145,9 +147,10 @@ public class CodePushUpdateManager {
 
     public void downloadPackage(JSONObject updatePackage, String expectedBundleFileName,
                                 DownloadProgressCallback progressCallback,
-                                String stringPublicKey) throws IOException {
+                                String stringPublicKey,
+                                String pathPrefix) throws IOException {
         String newUpdateHash = updatePackage.optString(CodePushConstants.PACKAGE_HASH_KEY, null);
-        String newUpdateFolderPath = getPackageFolderPath(newUpdateHash);
+        String newUpdateFolderPath = getPackageFolderPath(newUpdateHash, pathPrefix);
         String newUpdateMetadataPath = CodePushUtils.appendPathComponent(newUpdateFolderPath, CodePushConstants.PACKAGE_FILE_NAME);
         if (FileUtils.fileAtPathExists(newUpdateFolderPath)) {
             // This removes any stale data in newPackageFolderPath that could have been left
@@ -183,7 +186,7 @@ public class CodePushUpdateManager {
             long totalBytes = connection.getContentLength();
             long receivedBytes = 0;
 
-            File downloadFolder = new File(getCodePushPath());
+            File downloadFolder = new File(getCodePushPath(pathPrefix));
             downloadFolder.mkdirs();
             downloadFile = new File(downloadFolder, CodePushConstants.DOWNLOAD_FILE_NAME);
             fos = new FileOutputStream(downloadFile);
@@ -229,7 +232,7 @@ public class CodePushUpdateManager {
 
         if (isZip) {
             // Unzip the downloaded file and then delete the zip
-            String unzippedFolderPath = getUnzippedFolderPath();
+            String unzippedFolderPath = getUnzippedFolderPath(pathPrefix);
             FileUtils.unzipFile(downloadFile, unzippedFolderPath);
             FileUtils.deleteFileOrFolderSilently(downloadFile);
 
@@ -238,7 +241,7 @@ public class CodePushUpdateManager {
                     CodePushConstants.DIFF_MANIFEST_FILE_NAME);
             boolean isDiffUpdate = FileUtils.fileAtPathExists(diffManifestFilePath);
             if (isDiffUpdate) {
-                String currentPackageFolderPath = getCurrentPackageFolderPath();
+                String currentPackageFolderPath = getCurrentPackageFolderPath(pathPrefix);
                 CodePushUpdateUtils.copyNecessaryFilesFromCurrentPackage(diffManifestFilePath, currentPackageFolderPath, newUpdateFolderPath);
                 File diffManifestFile = new File(diffManifestFilePath);
                 diffManifestFile.delete();
@@ -307,9 +310,9 @@ public class CodePushUpdateManager {
         CodePushUtils.writeJsonToFile(updatePackage, newUpdateMetadataPath);
     }
 
-    public void installPackage(JSONObject updatePackage, boolean removePendingUpdate) {
+    public void installPackage(JSONObject updatePackage, boolean removePendingUpdate, String pathPrefix) {
         String packageHash = updatePackage.optString(CodePushConstants.PACKAGE_HASH_KEY, null);
-        JSONObject info = getCurrentPackageInfo();
+        JSONObject info = getCurrentPackageInfo(pathPrefix);
 
         String currentPackageHash = info.optString(CodePushConstants.CURRENT_PACKAGE_KEY, null);
         if (packageHash != null && packageHash.equals(currentPackageHash)) {
@@ -318,33 +321,33 @@ public class CodePushUpdateManager {
         }
 
         if (removePendingUpdate) {
-            String currentPackageFolderPath = getCurrentPackageFolderPath();
+            String currentPackageFolderPath = getCurrentPackageFolderPath(pathPrefix);
             if (currentPackageFolderPath != null) {
                 FileUtils.deleteDirectoryAtPath(currentPackageFolderPath);
             }
         } else {
-            String previousPackageHash = getPreviousPackageHash();
+            String previousPackageHash = getPreviousPackageHash(pathPrefix);
             if (previousPackageHash != null && !previousPackageHash.equals(packageHash)) {
-                FileUtils.deleteDirectoryAtPath(getPackageFolderPath(previousPackageHash));
+                FileUtils.deleteDirectoryAtPath(getPackageFolderPath(previousPackageHash, pathPrefix));
             }
 
             CodePushUtils.setJSONValueForKey(info, CodePushConstants.PREVIOUS_PACKAGE_KEY, info.optString(CodePushConstants.CURRENT_PACKAGE_KEY, null));
         }
 
         CodePushUtils.setJSONValueForKey(info, CodePushConstants.CURRENT_PACKAGE_KEY, packageHash);
-        updateCurrentPackageInfo(info);
+        updateCurrentPackageInfo(info, pathPrefix);
     }
 
-    public void rollbackPackage() {
-        JSONObject info = getCurrentPackageInfo();
-        String currentPackageFolderPath = getCurrentPackageFolderPath();
+    public void rollbackPackage(String pathPrefix) {
+        JSONObject info = getCurrentPackageInfo(pathPrefix);
+        String currentPackageFolderPath = getCurrentPackageFolderPath(pathPrefix);
         FileUtils.deleteDirectoryAtPath(currentPackageFolderPath);
         CodePushUtils.setJSONValueForKey(info, CodePushConstants.CURRENT_PACKAGE_KEY, info.optString(CodePushConstants.PREVIOUS_PACKAGE_KEY, null));
         CodePushUtils.setJSONValueForKey(info, CodePushConstants.PREVIOUS_PACKAGE_KEY, null);
-        updateCurrentPackageInfo(info);
+        updateCurrentPackageInfo(info, pathPrefix);
     }
 
-    public void downloadAndReplaceCurrentBundle(String remoteBundleUrl, String bundleFileName) throws IOException {
+    public void downloadAndReplaceCurrentBundle(String remoteBundleUrl, String bundleFileName, String pathPrefix) throws IOException {
         URL downloadUrl;
         HttpURLConnection connection = null;
         BufferedInputStream bin = null;
@@ -354,7 +357,7 @@ public class CodePushUpdateManager {
             downloadUrl = new URL(remoteBundleUrl);
             connection = (HttpURLConnection) (downloadUrl.openConnection());
             bin = new BufferedInputStream(connection.getInputStream());
-            File downloadFile = new File(getCurrentPackageBundlePath(bundleFileName));
+            File downloadFile = new File(getCurrentPackageBundlePath(bundleFileName, pathPrefix));
             downloadFile.delete();
             fos = new FileOutputStream(downloadFile);
             bout = new BufferedOutputStream(fos, CodePushConstants.DOWNLOAD_BUFFER_SIZE);
@@ -377,7 +380,7 @@ public class CodePushUpdateManager {
         }
     }
 
-    public void clearUpdates() {
+    public void clearUpdates(String pathPrefix) {
         FileUtils.deleteDirectoryAtPath(getCodePushPath());
     }
 }
