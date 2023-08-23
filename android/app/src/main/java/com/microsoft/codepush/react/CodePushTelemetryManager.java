@@ -127,7 +127,7 @@ public class CodePushTelemetryManager {
         mSettings.edit().putString(pathPrefix + "_" + RETRY_DEPLOYMENT_REPORT_KEY, statusReportJSON.toString()).commit();
     }
 
-    private void clearRetryStatusReport(, String pathPrefix) {
+    private void clearRetryStatusReport(String pathPrefix) {
         mSettings.edit().remove(pathPrefix + "_" + RETRY_DEPLOYMENT_REPORT_KEY).commit();
     }
 
@@ -152,7 +152,7 @@ public class CodePushTelemetryManager {
         }
     }
 
-    private String getPreviousStatusReportIdentifier(, String pathPrefix) {
+    private String getPreviousStatusReportIdentifier(String pathPrefix) {
         return mSettings.getString(pathPrefix + "_" + LAST_DEPLOYMENT_REPORT_KEY, null);
     }
 

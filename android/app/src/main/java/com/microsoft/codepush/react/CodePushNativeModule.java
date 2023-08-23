@@ -11,6 +11,7 @@ import com.facebook.react.ReactApplication;
 import com.facebook.react.ReactInstanceManager;
 import com.facebook.react.ReactRootView;
 import com.facebook.react.bridge.Arguments;
+import com.facebook.react.bridge.CatalystInstance;
 import com.facebook.react.bridge.JSBundleLoader;
 import com.facebook.react.bridge.LifecycleEventListener;
 import com.facebook.react.bridge.Promise;
@@ -124,6 +125,8 @@ public class CodePushNativeModule extends ReactContextBaseJavaModule {
     }
 
     private void loadBundle(String pathPrefix, String bundleFileName) {
+        System.err.println("[CodePush] NativeModule loadBundle: pathPrefix = " + pathPrefix + "  bundleFileName = " + bundleFileName);
+
         clearLifecycleEventListener();
         try {
             mCodePush.clearDebugCacheIfNeeded(resolveInstanceManager(), pathPrefix);
@@ -173,8 +176,8 @@ public class CodePushNativeModule extends ReactContextBaseJavaModule {
             } else {
                 latestJSBundleLoader = JSBundleLoader.createFileLoader(latestJSBundleFile);
             }
-            CatalystInstance catalystInstance = resolveInstanceManager().getCurrentReactContext().getCatalystInstance();
-            latestJSBundleLoader.loadScript(catalystInstance);
+//            CatalystInstance catalystInstance = instanceManager.getCurrentReactContext().getCatalystInstance();
+//            latestJSBundleLoader.loadScript(catalystInstance);
             mCodePush.initializeUpdateAfterRestart(pathPrefix);
             WritableMap map = Arguments.createMap();
             map.putString("pathPrefix", pathPrefix);
@@ -240,7 +243,7 @@ public class CodePushNativeModule extends ReactContextBaseJavaModule {
         }
 
         this._restartInProgress = true;
-        if (!onlyIfUpdateIsPending || mSettingsManager.isPendingUpdate(null)) {
+        if (!onlyIfUpdateIsPending || mSettingsManager.isPendingUpdate(null, pathPrefix)) {
             loadBundle(pathPrefix, bundleFileName);
             CodePushUtils.log("Restarting app");
             return;
@@ -250,12 +253,14 @@ public class CodePushNativeModule extends ReactContextBaseJavaModule {
         if (this._restartQueue.size() > 0) {
             boolean buf = this._restartQueue.get(0);
             this._restartQueue.remove(0);
-            this.restartAppInternal(buf);
+            this.restartAppInternal(buf, pathPrefix, bundleFileName);
         }
     }
 
     @ReactMethod
     public void allow(Promise promise) {
+        System.err.println("[CodePush] NativeModule allow: ");
+
         CodePushUtils.log("Re-allowing restarts");
         this._allowed = true;
 
@@ -263,7 +268,7 @@ public class CodePushNativeModule extends ReactContextBaseJavaModule {
             CodePushUtils.log("Executing pending restart");
             boolean buf = this._restartQueue.get(0);
             this._restartQueue.remove(0);
-            this.restartAppInternal(buf);
+            this.restartAppInternal(buf, null, null);
         }
 
         promise.resolve(null);
@@ -272,6 +277,7 @@ public class CodePushNativeModule extends ReactContextBaseJavaModule {
 
     @ReactMethod
     public void clearPendingRestart(Promise promise) {
+        System.err.println("[CodePush] NativeModule clearPendingRestart: ");
         this._restartQueue.clear();
         promise.resolve(null);
         return;
@@ -279,6 +285,7 @@ public class CodePushNativeModule extends ReactContextBaseJavaModule {
 
     @ReactMethod
     public void disallow(Promise promise) {
+        System.err.println("[CodePush] NativeModule disallow: ");
         CodePushUtils.log("Disallowing restarts");
         this._allowed = false;
         promise.resolve(null);
@@ -287,6 +294,7 @@ public class CodePushNativeModule extends ReactContextBaseJavaModule {
 
     @ReactMethod
     public void restartApp(boolean onlyIfUpdateIsPending, String pathPrefix, String bundleFileName, Promise promise) {
+        System.err.println("[CodePush] NativeModule restartApp: pathPrefix = " + pathPrefix + "  bundleFileName = " + bundleFileName);
         try {
             // restartAppInternal(onlyIfUpdateIsPending, pathPrefix, bundleFileName);
             if (!onlyIfUpdateIsPending || mSettingsManager.isPendingUpdate(null, pathPrefix)) {
@@ -303,6 +311,8 @@ public class CodePushNativeModule extends ReactContextBaseJavaModule {
 
     @ReactMethod
     public void downloadUpdate(final ReadableMap updatePackage, final boolean notifyProgress, String pathPrefix, String bundleFileName, final Promise promise) {
+        System.err.println("[CodePush] NativeModule downloadUpdate: pathPrefix = " + pathPrefix + "  bundleFileName = " + bundleFileName);
+
         AsyncTask<Void, Void, Void> asyncTask = new AsyncTask<Void, Void, Void>() {
             @Override
             protected Void doInBackground(Void... params) {
@@ -375,6 +385,8 @@ public class CodePushNativeModule extends ReactContextBaseJavaModule {
 
     @ReactMethod
     public void getConfiguration(Promise promise) {
+        System.err.println("[CodePush] NativeModule getConfiguration");
+
         try {
             WritableMap configMap =  Arguments.createMap();
             configMap.putString("appVersion", mCodePush.getAppVersion());
@@ -396,6 +408,8 @@ public class CodePushNativeModule extends ReactContextBaseJavaModule {
 
     @ReactMethod
     public void getUpdateMetadata(String pathPrefix, String bundleFileName, final int updateState, final Promise promise) {
+        System.err.println("[CodePush] NativeModule getUpdateMetadata:  pathPrefix = " + pathPrefix + "  bundleFileName = " + bundleFileName);
+
         AsyncTask<Void, Void, Void> asyncTask = new AsyncTask<Void, Void, Void>() {
             @Override
             protected Void doInBackground(Void... params) {
@@ -464,6 +478,9 @@ public class CodePushNativeModule extends ReactContextBaseJavaModule {
 
     @ReactMethod
     public void getNewStatusReport(String pathPrefix, String bundleFileName, final Promise promise) {
+        System.err.println("[CodePush] getNewStatusReport: pathPrefix = " + pathPrefix);
+        System.err.println("[CodePush] getNewStatusReport: bundleFileName = " + bundleFileName);
+
         AsyncTask<Void, Void, Void> asyncTask = new AsyncTask<Void, Void, Void>() {
             @Override
             protected Void doInBackground(Void... params) {
@@ -521,6 +538,8 @@ public class CodePushNativeModule extends ReactContextBaseJavaModule {
 
     @ReactMethod
     public void installUpdate(final ReadableMap updatePackage, final int installMode, final int minimumBackgroundDuration, String pathPrefix, String bundleFileName, final Promise promise) {
+        System.err.println("[CodePush] NativeModule installUpdate:  pathPrefix = " + pathPrefix + "  bundleFileName = " + bundleFileName);
+
         AsyncTask<Void, Void, Void> asyncTask = new AsyncTask<Void, Void, Void>() {
             @Override
             protected Void doInBackground(Void... params) {
@@ -556,7 +575,7 @@ public class CodePushNativeModule extends ReactContextBaseJavaModule {
                                     public void run() {
                                         CodePushUtils.log("Loading bundle on suspend");
                                         // restartAppInternal(false);
-                                        loadBundle(pathPrefix, bundleFileName)
+                                        loadBundle(pathPrefix, bundleFileName);
                                     }
                                 };
 
@@ -611,6 +630,8 @@ public class CodePushNativeModule extends ReactContextBaseJavaModule {
 
     @ReactMethod
     public void isFailedUpdate(String packageHash, String pathPrefix, Promise promise) {
+        System.err.println("[CodePush] NativeModule isFailedUpdate:  pathPrefix = " + pathPrefix);
+
         try {
             promise.resolve(mSettingsManager.isFailedHash(packageHash, pathPrefix));
         } catch (CodePushUnknownException e) {
@@ -621,6 +642,7 @@ public class CodePushNativeModule extends ReactContextBaseJavaModule {
 
     @ReactMethod
     public void getLatestRollbackInfo(String pathPrefix, Promise promise) {
+        System.err.println("[CodePush] NativeModule getLatestRollbackInfo:  pathPrefix = " + pathPrefix);
         try {
             JSONObject latestRollbackInfo = mSettingsManager.getLatestRollbackInfo(pathPrefix);
             if (latestRollbackInfo != null) {
@@ -636,6 +658,8 @@ public class CodePushNativeModule extends ReactContextBaseJavaModule {
 
     @ReactMethod
     public void setLatestRollbackInfo(String packageHash, String pathPrefix, Promise promise) {
+        System.err.println("[CodePush] NativeModule setLatestRollbackInfo:  pathPrefix = " + pathPrefix);
+
         try {
             mSettingsManager.setLatestRollbackInfo(packageHash, pathPrefix);
             promise.resolve(null);
@@ -647,6 +671,8 @@ public class CodePushNativeModule extends ReactContextBaseJavaModule {
 
     @ReactMethod
     public void isFirstRun(String packageHash, String pathPrefix, Promise promise) {
+        System.err.println("[CodePush] NativeModule isFirstRun:  pathPrefix = " + pathPrefix);
+
         try {
             boolean isFirstRun = mCodePush.didUpdate(pathPrefix)
                     && packageHash != null
@@ -661,6 +687,8 @@ public class CodePushNativeModule extends ReactContextBaseJavaModule {
 
     @ReactMethod
     public void notifyApplicationReady(String pathPrefix, Promise promise) {
+        System.err.println("[CodePush] NativeModule notifyApplicationReady:  pathPrefix = " + pathPrefix);
+
         try {
             mSettingsManager.removePendingUpdate(pathPrefix);
             promise.resolve("");
@@ -672,6 +700,8 @@ public class CodePushNativeModule extends ReactContextBaseJavaModule {
 
     @ReactMethod
     public void recordStatusReported(String pathPrefix, ReadableMap statusReport) {
+        System.err.println("[CodePush] NativeModule recordStatusReported:  pathPrefix = " + pathPrefix);
+
         try {
             mTelemetryManager.recordStatusReported(statusReport, pathPrefix);
         } catch(CodePushUnknownException e) {
@@ -681,6 +711,8 @@ public class CodePushNativeModule extends ReactContextBaseJavaModule {
 
     @ReactMethod
     public void saveStatusReportForRetry(ReadableMap statusReport, String pathPrefix) {
+        System.err.println("[CodePush] NativeModule saveStatusReportForRetry:  pathPrefix = " + pathPrefix);
+
         try {
             mTelemetryManager.saveStatusReportForRetry(statusReport, pathPrefix);
         } catch(CodePushUnknownException e) {

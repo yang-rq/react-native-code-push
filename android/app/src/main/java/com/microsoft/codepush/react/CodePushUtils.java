@@ -25,6 +25,9 @@ import java.util.Iterator;
 public class CodePushUtils {
 
     public static String appendPathComponent(String basePath, String appendPathComponent) {
+        System.err.println("[CodePush] updateManager: basePath = " + basePath);
+        System.err.println("[CodePush] updateManager: appendPathComponent = " + appendPathComponent);
+
         return new File(basePath, appendPathComponent).getAbsolutePath();
     }
 
@@ -209,7 +212,7 @@ public class CodePushUtils {
         Log.e(CodePushConstants.REACT_NATIVE_LOG_TAG, "[CodePush] Exception", tr);
     }
 
-    public static void logBundleUrl(String path, , String pathPrefix) {
+    public static void logBundleUrl(String path, String pathPrefix) {
         log("Loading " + pathPrefix +  " JS bundle from \"" + path + "\"");
     }
 

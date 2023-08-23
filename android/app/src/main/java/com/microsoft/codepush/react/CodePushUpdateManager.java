@@ -37,6 +37,7 @@ public class CodePushUpdateManager {
     }
 
     private String getCodePushPath(String pathPrefix) {
+        System.err.println("[CodePush] updateManager:" + pathPrefix);
         String codePushPath = CodePushUtils.appendPathComponent(getDocumentsDirectory(), CodePushConstants.CODE_PUSH_FOLDER_PREFIX);
         String prefixCodePushPath = CodePushUtils.appendPathComponent(codePushPath, pathPrefix);
         if (CodePush.isUsingTestConfiguration()) {
@@ -44,7 +45,7 @@ public class CodePushUpdateManager {
         }
 
         return prefixCodePushPath;
-        return codePushPath;
+//        return codePushPath;
     }
 
     private String getStatusFilePath(String pathPrefix) {
@@ -81,7 +82,7 @@ public class CodePushUpdateManager {
             return null;
         }
 
-        return getPackageFolderPath(packageHash);
+        return getPackageFolderPath(packageHash, pathPrefix);
     }
 
     public String getCurrentPackageBundlePath(String bundleFileName, String pathPrefix) {
@@ -381,6 +382,6 @@ public class CodePushUpdateManager {
     }
 
     public void clearUpdates(String pathPrefix) {
-        FileUtils.deleteDirectoryAtPath(getCodePushPath());
+        FileUtils.deleteDirectoryAtPath(getCodePushPath(pathPrefix));
     }
 }

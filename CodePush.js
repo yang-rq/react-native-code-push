@@ -107,7 +107,7 @@ async function getCurrentPackage(pathPrefix, bundleFileName) {
   return await getUpdateMetadata(pathPrefix, bundleFileName, CodePush.UpdateState.LATEST);
 }
 
-async function getUpdateMetadata(pathPrefix, bundleFileName, updateState) {
+async function getUpdateMetadata(updateState) {
   let updateMetadata = await NativeCodePush.getUpdateMetadata(pathPrefix, bundleFileName, updateState || CodePush.UpdateState.RUNNING);
   if (updateMetadata) {
     updateMetadata = { ...PackageMixins.local, ...updateMetadata };
@@ -317,6 +317,7 @@ const sync = (() => {
   // ------------------master end------------------
 
   // ------------------mulit start------------------
+  let syncQueue = [];
   const setSyncCompleted = () => {
     syncInProgress = false;
     // 回调完成后执行队列里的任务
